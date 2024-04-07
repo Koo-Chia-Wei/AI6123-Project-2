@@ -15,7 +15,8 @@ data.plot(figsize=(12, 6))
 plt.title('Monthly Anti-Diabetic Drug Sales in Australia')
 plt.xlabel('Date')
 plt.ylabel('Sales')
-plt.show()
+plt.savefig('original_series.svg', format='svg')  # Save plot
+# plt.show()
 
 # Perform Augmented Dickey-Fuller test for stationarity
 adf_test = adfuller(data['value'])
@@ -28,7 +29,8 @@ data['value_log_diff'] = data['value_log'].diff().dropna()  # Differencing
 
 # Plot transformed and differenced data
 data[['value_log', 'value_log_diff']].plot(subplots=True, figsize=(12, 8))
-plt.show()
+plt.savefig('transformed_series.svg', format='svg')  # Save plot
+# plt.show()
 
 # Re-check stationarity with ADF on transformed, differenced data
 adf_test_log_diff = adfuller(data['value_log_diff'].dropna())
@@ -39,7 +41,8 @@ print(f'p-value (log diff): {adf_test_log_diff[1]}')
 fig, ax = plt.subplots(2, 1, figsize=(12, 8))
 plot_acf(data['value_log_diff'].dropna(), ax=ax[0], lags=40)
 plot_pacf(data['value_log_diff'].dropna(), ax=ax[1], lags=40, method='ywm')
-plt.show()
+plt.savefig('ACF_PACF_transformed.svg', format='svg')  # Save plot
+# plt.show()
 
 # Define model configurations
 arima_configs = [(1, 1, 0), (0, 1, 1), (1, 1, 1)]
@@ -75,6 +78,9 @@ results.append(('auto_arima', (auto_arima_model.order, auto_arima_model.seasonal
 results_df = pd.DataFrame(results, columns=['Model Type', 'Configuration', 'AIC', 'Model Object'])
 best_model_details = results_df.sort_values(by='AIC').iloc[0]
 
+# Save tabulated results to CSV
+results_df.to_csv('model_selection_results.csv', index=False)
+
 # Display best model information
 print(f"Best Model: {best_model_details['Model Type']} - Configuration: {best_model_details['Configuration']} - AIC: {best_model_details['AIC']}")
 
@@ -103,4 +109,5 @@ plt.title('Forecast of Monthly Anti-Diabetic Drug Sales')
 plt.xlabel('Date')
 plt.ylabel('Sales')
 plt.legend()
-plt.show()
+plt.savefig('forecast_plot.svg', format='svg')  # Save plot
+# plt.show()
