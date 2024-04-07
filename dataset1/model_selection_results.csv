@@ -1,0 +1,12 @@
+Model Type,Configuration,AIC,Model Object
+ARIMA,"(1, 1, 0)",-1.7288718730284511,<statsmodels.tsa.arima.model.ARIMAResultsWrapper object at 0x0000017381A42FB0>
+ARIMA,"(0, 1, 1)",-105.73348957982378,<statsmodels.tsa.arima.model.ARIMAResultsWrapper object at 0x0000017383E02E60>
+ARIMA,"(0, 0, 1)",-172.23774979248196,<statsmodels.tsa.arima.model.ARIMAResultsWrapper object at 0x00000173856539A0>
+ARIMA,"(1, 1, 1)",-123.29953225008788,<statsmodels.tsa.arima.model.ARIMAResultsWrapper object at 0x0000017385D3C0D0>
+ARIMA,"(1, 0, 0)",-130.81669913093478,<statsmodels.tsa.arima.model.ARIMAResultsWrapper object at 0x0000017387587370>
+SARIMA,"((1, 1, 0), (1, 1, 1, 12))",-310.65955797731044,<statsmodels.tsa.statespace.sarimax.SARIMAXResultsWrapper object at 0x0000017378C12710>
+SARIMA,"((0, 1, 1), (1, 1, 0, 12))",-352.237178503014,<statsmodels.tsa.statespace.sarimax.SARIMAXResultsWrapper object at 0x000001737A518640>
+SARIMA,"((1, 1, 1), (0, 1, 1, 12))",-453.89540466582775,<statsmodels.tsa.statespace.sarimax.SARIMAXResultsWrapper object at 0x0000017385CF1030>
+SARIMA,"((1, 0, 0), (0, 1, 1, 12))",-467.80183449737603,<statsmodels.tsa.statespace.sarimax.SARIMAXResultsWrapper object at 0x000001738D1F4CD0>
+SARIMA,"((1, 0, 0), (1, 1, 1, 12))",-471.5900134768533,<statsmodels.tsa.statespace.sarimax.SARIMAXResultsWrapper object at 0x000001738D99E590>
+auto_arima,"((1, 0, 5), (1, 0, 2, 12))",-520.0525185641142," ARIMA(1,0,5)(1,0,2)[12]          "

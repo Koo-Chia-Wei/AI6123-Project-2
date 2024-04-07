@@ -6,53 +6,136 @@ from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
 from statsmodels.tsa.statespace.sarimax import SARIMAX
 from statsmodels.tsa.arima.model import ARIMA
 import pmdarima as pm
+import os
+
+# Resolve path of the current file
+file_path = os.path.abspath(__file__)
+
+# Extract the directory in which the file is located
+file_dir = os.path.dirname(file_path)
+
+# The directory where you want to save the plot
+save_dir = os.path.join(file_dir, "image")
+if not os.path.exists(save_dir):
+    os.makedirs(save_dir)
 
 # Load the dataset
-data = pd.read_csv("airpassenger.dat", header=None, names=["Passengers"])
+data = pd.read_csv(
+    os.path.join(os.path.dirname(file_path), "airpassenger.dat"),
+    header=None,
+    names=["Passengers"],
+)
 
 # Assuming the data starts from January 1949 and is monthly, create a DateTime index
 data.index = pd.date_range(start="1949-01", periods=len(data), freq="M")
+data["Passengers"] = pd.to_numeric(data["Passengers"], errors="coerce")
+data = data.dropna(subset=["Passengers"])
 
 # Initial visual inspection of the series
 data.plot(figsize=(12, 6))
-plt.title("Monthly Anti-Diabetic Drug Sales in Australia")
+plt.title("International Airline Passengers")
 plt.xlabel("Date")
-plt.ylabel("Sales")
-plt.savefig("original_series.svg", format="svg")  # Save plot
+plt.ylabel("Passengers (in thousands)")
+plt.savefig(os.path.join(save_dir, "airline_passengers.pdf"), format="pdf")  # Save plot
 # plt.show()
 
 # Perform Augmented Dickey-Fuller test for stationarity
-adf_test = adfuller(data["value"])
+adf_test = adfuller(data["Passengers"])
 print(f"ADF Statistic: {adf_test[0]}")
 print(f"p-value: {adf_test[1]}")
+
+# ACF and PACF plots for the original series
+fig, ax = plt.subplots(2, 1, figsize=(12, 8))
+plot_acf(data["Passengers"], ax=ax[0], lags=40)
+plot_pacf(data["Passengers"], ax=ax[1], lags=40, method="ywm")
+fig.suptitle("ACF and PACF plots for original International Airline Passengers data", fontsize=16)
+fig.tight_layout(rect=[0, 0.03, 1, 0.95])
+plt.savefig(
+    os.path.join(save_dir, "ACF_PACF_original_airline_passengers.pdf"), format="pdf"
+)  # Save plot
+# plt.show()
 
 # Determine if transformation is necessary (based on visual inspection)
 data["Passengers_log"] = np.log(data["Passengers"])
 data["Passengers_log_diff"] = data["Passengers_log"].diff().dropna()  # Differencing
+data.dropna(inplace=True)
 
 # Plot transformed and differenced data
-data[["value_log", "value_log_diff"]].plot(subplots=True, figsize=(12, 8))
-plt.savefig("transformed_series.svg", format="svg")  # Save plot
+fig, axes = plt.subplots(nrows=2, ncols=1, figsize=(12, 8))
+data["Passengers_log"].plot(ax=axes[0], title="Log-transformed Data")
+axes[0].set_ylabel("Log(Passengers)")
+axes[0].set_xlabel("Date")
+
+data["Passengers_log_diff"].plot(ax=axes[1], title="Differenced Log-transformed Data")
+axes[1].set_ylabel("Differenced Log(Passengers)")
+axes[1].set_xlabel("Date")
+
+plt.tight_layout()  # Adjust layout to make room for the titles
+plt.savefig(os.path.join(save_dir, "log_transformed_diff_airline_passengers.pdf"), format="pdf")  # Save plot
 # plt.show()
 
 # Re-check stationarity with ADF on transformed, differenced data
-adf_test_log_diff = adfuller(data["value_log_diff"].dropna())
+adf_test_log = adfuller(data["Passengers_log"].dropna())
+print(f"ADF Statistic (log): {adf_test_log[0]}")
+print(f"p-value (log): {adf_test_log[1]}")
+adf_test_log_diff = adfuller(data["Passengers_log_diff"].dropna())
 print(f"ADF Statistic (log diff): {adf_test_log_diff[0]}")
 print(f"p-value (log diff): {adf_test_log_diff[1]}")
+
+# ACF and PACF plots for log-transformed series
+fig, ax = plt.subplots(2, 1, figsize=(12, 8))
+plot_acf(data["Passengers_log"].dropna(), ax=ax[0], lags=40)
+plot_pacf(data["Passengers_log"].dropna(), ax=ax[1], lags=40, method="ywm")
+fig.suptitle("ACF and PACF plots for log-transformed International Airline Passengers data", fontsize=16)
+fig.tight_layout(rect=[0, 0.03, 1, 0.95])
+plt.savefig(
+    os.path.join(save_dir, "ACF_PACF_log_transformed_airline_passengers.pdf"), format="pdf"
+)  # Save plot
+# plt.show()
 
 # ACF and PACF plots for differenced, log-transformed series
 fig, ax = plt.subplots(2, 1, figsize=(12, 8))
 plot_acf(data["Passengers_log_diff"].dropna(), ax=ax[0], lags=40)
 plot_pacf(data["Passengers_log_diff"].dropna(), ax=ax[1], lags=40, method="ywm")
-plt.savefig("passengers_ACF_PACF.svg", format="svg")  # Save plot
+fig.suptitle("ACF and PACF plots for differenced, log-transformed International Airline Passengers data", fontsize=16)
+fig.tight_layout(rect=[0, 0.03, 1, 0.95])
+plt.savefig(
+    os.path.join(save_dir, "ACF_PACF_diff_log_transformed_airline_passengers.pdf"), format="pdf"
+)  # Save plot
 # plt.show()
 
 # Define ARIMA and SARIMA model configurations
-arima_configs = [(1, 1, 0), (0, 1, 1), (1, 1, 1)]
+arima_configs = [
+    (1, 1, 0),  # AR(1) model with differencing, suggested by PACF cut-off at lag 1
+    (0, 1, 1),  # MA(1) model with differencing, suggested by ACF cut-off at lag 1
+    (0, 0, 1),  # MA(1) model without differencing, for potential mild non-stationarity
+    (1, 1, 1),  # ARMA(1,1) model with differencing, general model incorporating both AR and MA
+    (1, 0, 0),  # Simple AR(1) model, capturing potential autoregressive behavior without differencing
+    # Add new ARIMA configs here
+]
+
 sarima_configs = [
-    ((1, 1, 0), (1, 1, 1, 12)),
-    ((0, 1, 1), (1, 1, 0, 12)),
-    ((1, 1, 1), (0, 1, 1, 12)),
+    (
+        (1, 1, 0),
+        (1, 1, 1, 12),
+    ),  # Incorporates both non-seasonal and seasonal components
+    (
+        (0, 1, 1),
+        (1, 1, 0, 12),
+    ),  # Seasonal MA component, assumes non-seasonal MA process with seasonal differencing
+    (
+        (1, 1, 1),
+        (0, 1, 1, 12),
+    ),  # Non-seasonal ARMA(1,1) with seasonal MA(1), for complex seasonality
+    (
+        (1, 0, 0),
+        (0, 1, 1, 12),
+    ),  # Non-seasonal AR(1) model with seasonal MA(1), addresses seasonal autocorrelations
+    (
+        (1, 0, 0),
+        (1, 1, 1, 12),
+    ),  # AR(1) with both non-seasonal and seasonal differencing and MA(1), for clear seasonal patterns
+    # Add new SARIMA configs here
 ]
 
 # Fit models manually and collect AIC values
@@ -62,6 +145,11 @@ for config in arima_configs:
         model = ARIMA(data["Passengers_log_diff"], order=config)
         model_fit = model.fit()
         results.append(("ARIMA", config, model_fit.aic, model_fit))
+        # Diagnostic plot for the fitted model
+        model_fit.plot_diagnostics(figsize=(12, 8))
+        plt.suptitle(f'Diagnostic Plot for ARIMA{config} Model', fontsize=16)
+        plt.savefig(os.path.join(save_dir, f"diagnostic_plot_ARIMA{config}_airline_passengers.pdf"), format="pdf")  # Save plot
+        # plt.show()
     except Exception as e:
         print(f"Error fitting ARIMA{config}: {e}")
 
@@ -72,6 +160,11 @@ for config in sarima_configs:
         )  # Use log diff series
         model_fit = model.fit()
         results.append(("SARIMA", config, model_fit.aic, model_fit))
+        # Diagnostic plot for the fitted model
+        model_fit.plot_diagnostics(figsize=(12, 8))
+        plt.suptitle(f'Diagnostic Plot for SARIMA{config} Model', fontsize=16)
+        plt.savefig(os.path.join(save_dir, f"diagnostic_plot_SARIMA{config}_airline_passengers.pdf"), format="pdf")  # Save plot
+        # plt.show()
     except Exception as e:
         print(f"Error fitting SARIMA{config}: {e}")
 
@@ -103,7 +196,7 @@ results_df = pd.DataFrame(
 best_model_details = results_df.sort_values(by="AIC").iloc[0]
 
 # Save tabulated results to CSV
-results_df.to_csv("model_selection_results.csv", index=False)
+results_df.to_csv(os.path.join(file_dir, "model_selection_results.csv"), index=False)
 
 # Display best model information
 print(
@@ -112,24 +205,30 @@ print(
 
 # Forecast with the best model
 forecast_steps = 36  # For 36 months ahead
+last_date = data.index[-1]
 forecast_index = pd.date_range(
-    data.index[-1], periods=forecast_steps + 1, closed="right", freq="MS"
+    start=last_date + pd.Timedelta(days=1), periods=forecast_steps, freq="M"
 )
 
 # Forecasting
 if best_model_details["Model Type"] == "auto_arima":
+    # For auto_arima, directly get the forecast and confidence intervals
     forecast, conf_int = best_model_details["Model Object"].predict(
         n_periods=forecast_steps, return_conf_int=True
     )
+    # Adjust the forecast and confidence intervals back to the original scale if necessary
+    forecast = np.exp(forecast + data["Passengers_log"].iloc[-1])
+    conf_int_lower = np.exp(conf_int[:, 0] + data["Passengers_log"].iloc[-1])
+    conf_int_upper = np.exp(conf_int[:, 1] + data["Passengers_log"].iloc[-1])
 else:
+    # For manual ARIMA/SARIMA models, use get_forecast and adjust the forecast back to the original scale
     forecast_res = best_model_details["Model Object"].get_forecast(steps=forecast_steps)
     forecast = forecast_res.predicted_mean
     conf_int = forecast_res.conf_int()
-
-# Convert forecast and confidence intervals to original scale
-forecast = np.exp(forecast.cumsum() + data["Passengers_log"][-1])
-conf_int_lower = np.exp(conf_int[:, 0].cumsum() + data["Passengers_log"][-1])
-conf_int_upper = np.exp(conf_int[:, 1].cumsum() + data["Passengers_log"][-1])
+    # Assuming forecast is on the differenced and logged scale, adjust back to original scale
+    forecast = np.exp(forecast.cumsum() + data["Passengers_log"].iloc[-1])
+    conf_int_lower = np.exp(conf_int[:, 0].cumsum() + data["Passengers_log"].iloc[-1])
+    conf_int_upper = np.exp(conf_int[:, 1].cumsum() + data["Passengers_log"].iloc[-1])
 
 # Plot the forecast and the original data
 plt.figure(figsize=(12, 6))
@@ -142,5 +241,7 @@ plt.title("Forecast of International Airline Passengers")
 plt.xlabel("Date")
 plt.ylabel("Passengers (in thousands)")
 plt.legend()
-plt.savefig("passengers_forecast_plot.svg", format="svg")  # Save plot
+plt.savefig(
+    os.path.join(save_dir, "forecast_airline_passengers.pdf"), format="pdf"
+)  # Save plot
 # plt.show()
