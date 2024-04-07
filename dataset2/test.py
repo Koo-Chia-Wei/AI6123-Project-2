@@ -27,8 +27,8 @@ print(f"ADF Statistic: {adf_test[0]}")
 print(f"p-value: {adf_test[1]}")
 
 # Determine if transformation is necessary (based on visual inspection)
-data["value_log"] = np.log(data["value"])
-data["value_log_diff"] = data["value_log"].diff().dropna()  # Differencing
+data["Passengers_log"] = np.log(data["Passengers"])
+data["Passengers_log_diff"] = data["Passengers_log"].diff().dropna()  # Differencing
 
 # Plot transformed and differenced data
 data[["value_log", "value_log_diff"]].plot(subplots=True, figsize=(12, 8))
@@ -42,12 +42,12 @@ print(f"p-value (log diff): {adf_test_log_diff[1]}")
 
 # ACF and PACF plots for differenced, log-transformed series
 fig, ax = plt.subplots(2, 1, figsize=(12, 8))
-plot_acf(data["value_log_diff"].dropna(), ax=ax[0], lags=40)
-plot_pacf(data["value_log_diff"].dropna(), ax=ax[1], lags=40, method="ywm")
-plt.savefig("ACF_PACF_transformed.svg", format="svg")  # Save plot
+plot_acf(data["Passengers_log_diff"].dropna(), ax=ax[0], lags=40)
+plot_pacf(data["Passengers_log_diff"].dropna(), ax=ax[1], lags=40, method="ywm")
+plt.savefig("passengers_ACF_PACF.svg", format="svg")  # Save plot
 # plt.show()
 
-# Define model configurations
+# Define ARIMA and SARIMA model configurations
 arima_configs = [(1, 1, 0), (0, 1, 1), (1, 1, 1)]
 sarima_configs = [
     ((1, 1, 0), (1, 1, 1, 12)),
@@ -59,7 +59,7 @@ sarima_configs = [
 results = []
 for config in arima_configs:
     try:
-        model = ARIMA(data["value_log_diff"], order=config)  # Use log diff series
+        model = ARIMA(data["Passengers_log_diff"], order=config)
         model_fit = model.fit()
         results.append(("ARIMA", config, model_fit.aic, model_fit))
     except Exception as e:
@@ -68,7 +68,7 @@ for config in arima_configs:
 for config in sarima_configs:
     try:
         model = SARIMAX(
-            data["value_log_diff"], order=config[0], seasonal_order=config[1]
+            data["Passengers_log_diff"], order=config[0], seasonal_order=config[1]
         )  # Use log diff series
         model_fit = model.fit()
         results.append(("SARIMA", config, model_fit.aic, model_fit))
@@ -77,7 +77,7 @@ for config in sarima_configs:
 
 # Automatic ARIMA model selection using auto_arima on transformed, differenced data
 auto_arima_model = pm.auto_arima(
-    data["value_log_diff"],
+    data["Passengers_log_diff"],
     seasonal=True,
     m=12,
     trace=False,
@@ -127,19 +127,20 @@ else:
     conf_int = forecast_res.conf_int()
 
 # Convert forecast and confidence intervals to original scale
-forecast = np.exp(forecast.cumsum() + data["value_log"][-1])
-conf_int = np.exp(conf_int.cumsum() + data["value_log"][-1])
+forecast = np.exp(forecast.cumsum() + data["Passengers_log"][-1])
+conf_int_lower = np.exp(conf_int[:, 0].cumsum() + data["Passengers_log"][-1])
+conf_int_upper = np.exp(conf_int[:, 1].cumsum() + data["Passengers_log"][-1])
 
 # Plot the forecast and the original data
 plt.figure(figsize=(12, 6))
-plt.plot(data.index, data["value"], label="Observed", marker="o")
+plt.plot(data.index, data["Passengers"], label="Observed", marker="o")
 plt.plot(forecast_index, forecast, label="Forecast", marker="x")
 plt.fill_between(
-    forecast_index, conf_int[:, 0], conf_int[:, 1], color="grey", alpha=0.2
+    forecast_index, conf_int_lower, conf_int_upper, color="grey", alpha=0.2
 )
-plt.title("Forecast of Monthly Anti-Diabetic Drug Sales")
+plt.title("Forecast of International Airline Passengers")
 plt.xlabel("Date")
-plt.ylabel("Sales")
+plt.ylabel("Passengers (in thousands)")
 plt.legend()
-plt.savefig("forecast_plot.svg", format="svg")  # Save plot
+plt.savefig("passengers_forecast_plot.svg", format="svg")  # Save plot
 # plt.show()
